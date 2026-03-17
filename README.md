@@ -192,6 +192,23 @@ This starts the API server at `http://localhost:3100`. An embedded PostgreSQL da
 
 <br/>
 
+### Persistence & Auto-Provisioning
+
+To avoid re-configuring your company and agents on every redeploy, you can use environment variables to auto-provision your instance if the database is empty.
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `PAPERCLIP_AUTO_PROVISION` | Set to `true` to enable auto-provisioning. | `false` |
+| `PAPERCLIP_PROVISION_COMPANY_NAME` | Name of the first company. | `My Company` |
+| `PAPERCLIP_PROVISION_COMPANY_MISSION`| Mission statement / initial goal. | (Optional) |
+| `PAPERCLIP_PROVISION_CEO_NAME` | Name of the CEO agent. | `CEO` |
+| `PAPERCLIP_PROVISION_CEO_ADAPTER` | Adapter type (e.g., `claude_local`). | `claude_local` |
+| `PAPERCLIP_PROVISION_CEO_MODEL` | Model name for the CEO. | (Optional) |
+| `PAPERCLIP_PROVISION_CEO_CWD` | Working directory for the CEO. | (Optional) |
+| `PAPERCLIP_BOOTSTRAP_ADMIN_EMAIL` | Email for the first admin user. | (Optional) |
+
+<br/>
+
 ## FAQ
 
 **What does a typical setup look like?**

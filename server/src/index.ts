@@ -25,7 +25,11 @@ import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { logger } from "./middleware/logger.js";
 import { setupLiveEventsWebSocketServer } from "./realtime/live-events-ws.js";
-import { heartbeatService, reconcilePersistedRuntimeServicesOnStartup } from "./services/index.js";
+import { 
+  heartbeatService, 
+  reconcilePersistedRuntimeServicesOnStartup,
+  autoProvision 
+} from "./services/index.js";
 import { createStorageServiceFromConfig } from "./storage/index.js";
 import { printStartupBanner } from "./startup-banner.js";
 import { getBoardClaimWarningUrl, initializeBoardClaimChallenge } from "./board-claim.js";
@@ -493,6 +497,10 @@ export async function startServer(): Promise<StartedServer> {
   setupLiveEventsWebSocketServer(server, db as any, {
     deploymentMode: config.deploymentMode,
     resolveSessionFromHeaders,
+  });
+
+  void autoProvision(db as any).catch((err) => {
+    logger.error({ err }, "Auto-provisioning failed");
   });
 
   void reconcilePersistedRuntimeServicesOnStartup(db as any)
