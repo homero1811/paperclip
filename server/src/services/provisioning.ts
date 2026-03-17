@@ -1,4 +1,4 @@
-import { process } from "node:process";
+import process from "node:process";
 import { sql, eq, and } from "drizzle-orm";
 import { 
   agents, 
@@ -24,7 +24,7 @@ export async function autoProvision(db: Db) {
       .select({ id: authUsers.id })
       .from(authUsers)
       .where(eq(authUsers.email, adminEmail))
-      .then((rows) => rows[0] ?? null);
+      .then((rows: any[]) => rows[0] ?? null);
 
     if (user) {
       const existingRole = await db
@@ -36,7 +36,7 @@ export async function autoProvision(db: Db) {
             eq(instanceUserRoles.role, "instance_admin")
           )
         )
-        .then((rows) => rows[0] ?? null);
+        .then((rows: any[]) => rows[0] ?? null);
 
       if (!existingRole) {
         logger.info({ email: adminEmail }, "Auto-provisioning: adding instance_admin role to bootstrap admin");
@@ -65,7 +65,7 @@ export async function autoProvision(db: Db) {
 
   logger.info({ companyName, ceoName }, "Auto-provisioning: creating first company and ceo");
 
-  await db.transaction(async (tx) => {
+  await db.transaction(async (tx: any) => {
     const [company] = await tx
       .insert(companies)
       .values({
@@ -119,7 +119,7 @@ export async function autoProvision(db: Db) {
         .select({ id: authUsers.id })
         .from(authUsers)
         .where(eq(authUsers.email, adminEmail))
-        .then((rows) => rows[0] ?? null);
+        .then((rows: any[]) => rows[0] ?? null);
       
       if (user) {
         await tx.insert(companyMemberships).values({
