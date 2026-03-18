@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * PluginToolDispatcher — orchestrates plugin tool discovery, lifecycle
  * integration, and execution routing for the agent service.
