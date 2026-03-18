@@ -33,6 +33,7 @@ type StartupBannerOptions = {
   databaseBackupIntervalMinutes: number;
   databaseBackupRetentionDays: number;
   databaseBackupDir: string;
+  betterAuthSecretSet: boolean;
 };
 
 const ansi = {
@@ -164,6 +165,12 @@ export function printStartupBanner(opts: StartupBannerOptions): void {
     row("DB Backup", dbBackup),
     row("Backup Dir", opts.databaseBackupDir),
     row("Config", configPath),
+    row(
+      "Session Secret",
+      opts.betterAuthSecretSet
+        ? color("set", "green")
+        : color("missing (sessions transient)", "yellow"),
+    ),
     agentJwtSecret.status === "warn"
       ? color("  ───────────────────────────────────────────────────────", "yellow")
       : null,

@@ -461,6 +461,20 @@ export async function startServer(): Promise<StartedServer> {
     resolveSessionFromHeaders = (headers) => resolveBetterAuthSessionFromHeaders(auth, headers);
     await initializeBoardClaimChallenge(db as any, { deploymentMode: config.deploymentMode });
     authReady = true;
+
+    // Check if the instance is effectively "fresh" and warn about persistence
+    const adminCount = await (db as any)
+      .select({ count: instanceUserRoles.id })
+      .from(instanceUserRoles)
+      .then((rows: any[]) => rows.length);
+    if (adminCount === 1) {
+      const yellow = "\x1b[33m";
+      const reset = "\x1b[0m";
+      logger.warn(
+        `${yellow}PERSISTENCE WARNING: Only the default 'local-board' administrator exists. ${reset}` +
+        `${yellow}If you have previously configured this instance, your data may have been lost due to a non-persistent volume during redeploy.${reset}`
+      );
+    }
   }
   
   const listenPort = await detectPort(config.port);
@@ -636,6 +650,7 @@ export async function startServer(): Promise<StartedServer> {
         databaseBackupIntervalMinutes: config.databaseBackupIntervalMinutes,
         databaseBackupRetentionDays: config.databaseBackupRetentionDays,
         databaseBackupDir: config.databaseBackupDir,
+        betterAuthSecretSet: !!(process.env.BETTER_AUTH_SECRET?.trim() || process.env.PAPERCLIP_AGENT_JWT_SECRET?.trim()),
       });
 
       const boardClaimUrl = getBoardClaimWarningUrl(config.host, listenPort);
