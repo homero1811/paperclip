@@ -27,17 +27,15 @@ COPY packages/plugins/examples/plugin-authoring-smoke-example/package.json packa
 COPY packages/plugins/examples/plugin-file-browser-example/package.json packages/plugins/examples/plugin-file-browser-example/
 COPY packages/plugins/examples/plugin-kitchen-sink-example/package.json packages/plugins/examples/plugin-kitchen-sink-example/
 
+# Ensure all dependencies (including devDeps like tsc) are installed for the build stage
 RUN pnpm install --frozen-lockfile --prod=false
 
 FROM base AS build
 WORKDIR /app
 COPY --from=deps /app /app
 COPY . .
-RUN pnpm --filter @paperclipai/shared build
-RUN pnpm --filter @paperclipai/db build
-RUN pnpm --filter @paperclipai/plugin-sdk build
-RUN pnpm --filter @paperclipai/ui build
-RUN pnpm --filter @paperclipai/server build
+# Build all packages in order (shared, shared-sdk, plugin-sdk, ui, server)
+RUN pnpm --filter @paperclipai/shared build   && pnpm --filter @paperclipai/db build   && pnpm --filter @paperclipai/plugin-sdk build   && pnpm --filter @paperclipai/ui build   && pnpm --filter @paperclipai/server build
 RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" && exit 1)
 
 FROM base AS production

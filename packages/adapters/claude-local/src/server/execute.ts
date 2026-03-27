@@ -24,7 +24,9 @@ import {
   parseClaudeStreamJson,
   describeClaudeFailure,
   detectClaudeLoginRequired,
+  detectClaudeRateLimited,
   isClaudeMaxTurnsResult,
+  isClaudePermissionStuckResult,
   isClaudeUnknownSessionError,
 } from "./parse.js";
 
@@ -313,7 +315,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const effort = asString(config.effort, "");
   const chrome = asBoolean(config.chrome, false);
   const maxTurns = asNumber(config.maxTurnsPerRun, 0);
-  const dangerouslySkipPermissions = asBoolean(config.dangerouslySkipPermissions, false);
+  const dangerouslySkipPermissions = asBoolean(config.dangerouslySkipPermissions, true);
   const instructionsFilePath = asString(config.instructionsFilePath, "").trim();
   const instructionsFileDir = instructionsFilePath ? `${path.dirname(instructionsFilePath)}/` : "";
   const commandNotes = instructionsFilePath
@@ -477,6 +479,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       stdout: proc.stdout,
       stderr: proc.stderr,
     });
+    const rateLimited = detectClaudeRateLimited({
+      parsed,
+      stdout: proc.stdout,
+      stderr: proc.stderr,
+    });
     const errorMeta =
       loginMeta.loginUrl != null
         ? {
@@ -493,6 +500,18 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         errorCode: "timeout",
         errorMeta,
         clearSession: Boolean(opts.clearSessionOnMissingSession),
+      };
+    }
+
+    if (rateLimited) {
+      return {
+        exitCode: proc.exitCode,
+        signal: proc.signal,
+        timedOut: false,
+        errorMessage: "Claude rate limit reached. The agent will retry on the next heartbeat.",
+        errorCode: "rate_limited",
+        errorMeta,
+        clearSession: false,
       };
     }
 
@@ -536,6 +555,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       } as Record<string, unknown>)
       : null;
     const clearSessionForMaxTurns = isClaudeMaxTurnsResult(parsed);
+    const clearSessionForPermissionStuck = isClaudePermissionStuckResult({
+      parsed,
+      stdout: proc.stdout,
+      stderr: proc.stderr,
+    });
 
     return {
       exitCode: proc.exitCode,
@@ -544,8 +568,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       errorMessage:
         (proc.exitCode ?? 0) === 0
           ? null
-          : describeClaudeFailure(parsed) ?? `Claude exited with code ${proc.exitCode ?? -1}`,
-      errorCode: loginMeta.requiresLogin ? "claude_auth_required" : null,
+          : clearSessionForPermissionStuck
+            ? "Agent session stuck on permission prompts. Starting fresh session on next heartbeat."
+            : describeClaudeFailure(parsed) ?? `Claude exited with code ${proc.exitCode ?? -1}`,
+      errorCode: loginMeta.requiresLogin
+        ? "claude_auth_required"
+        : clearSessionForPermissionStuck
+          ? "permission_stuck"
+          : null,
       errorMeta,
       usage,
       sessionId: resolvedSessionId,
@@ -558,7 +588,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       costUsd: parsedStream.costUsd ?? asNumber(parsed.total_cost_usd, 0),
       resultJson: parsed,
       summary: parsedStream.summary || asString(parsed.result, ""),
-      clearSession: clearSessionForMaxTurns || Boolean(opts.clearSessionOnMissingSession && !resolvedSessionId),
+      clearSession: clearSessionForMaxTurns || clearSessionForPermissionStuck || Boolean(opts.clearSessionOnMissingSession && !resolvedSessionId),
     };
   };
 

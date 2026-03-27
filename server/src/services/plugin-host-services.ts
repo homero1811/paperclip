@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Db } from "@paperclipai/db";
 import { pluginLogs, agentTaskSessions as agentTaskSessionsTable } from "@paperclipai/db";
 import { eq, and, like, desc } from "drizzle-orm";

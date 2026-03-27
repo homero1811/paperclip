@@ -2,6 +2,7 @@ import type { UsageSummary } from "@paperclipai/adapter-utils";
 import { asString, asNumber, parseObject, parseJson } from "@paperclipai/adapter-utils/server-utils";
 
 const CLAUDE_AUTH_REQUIRED_RE = /(?:not\s+logged\s+in|please\s+log\s+in|please\s+run\s+`?claude\s+login`?|login\s+required|requires\s+login|unauthorized|authentication\s+required)/i;
+const CLAUDE_RATE_LIMIT_RE = /(?:you'?ve\s+hit\s+your\s+limit|rate\s+limit|too\s+many\s+requests|usage\s+limit\s+reached|resets?\s+\d{1,2}(?:am|pm))/i;
 const URL_RE = /(https?:\/\/[^\s'"`<>()[\]{};,!?]+[^\s'"`<>()[\]{};,!.?:]+)/gi;
 
 export function parseClaudeStreamJson(stdout: string) {
@@ -138,6 +139,21 @@ export function detectClaudeLoginRequired(input: {
   };
 }
 
+export function detectClaudeRateLimited(input: {
+  parsed: Record<string, unknown> | null;
+  stdout: string;
+  stderr: string;
+}): boolean {
+  const resultText = asString(input.parsed?.result, "").trim();
+  const messages = [resultText, ...extractClaudeErrorMessages(input.parsed ?? {}), input.stdout, input.stderr]
+    .join("\n")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return messages.some((line) => CLAUDE_RATE_LIMIT_RE.test(line));
+}
+
 export function describeClaudeFailure(parsed: Record<string, unknown>): string | null {
   const subtype = asString(parsed.subtype, "");
   const resultText = asString(parsed.result, "").trim();
@@ -165,6 +181,19 @@ export function isClaudeMaxTurnsResult(parsed: Record<string, unknown> | null | 
 
   const resultText = asString(parsed.result, "").trim();
   return /max(?:imum)?\s+turns?/i.test(resultText);
+}
+
+export function isClaudePermissionStuckResult(input: {
+  parsed: Record<string, unknown> | null;
+  stdout: string;
+  stderr: string;
+}): boolean {
+  const text = [
+    asString(input.parsed?.result, ""),
+    input.stdout,
+    input.stderr,
+  ].join("\n");
+  return /(?:requires?\s+approval|permission.*denied|Bash\s+tool.*(?:requires?|needs?)\s+approval)/i.test(text);
 }
 
 export function isClaudeUnknownSessionError(parsed: Record<string, unknown>): boolean {

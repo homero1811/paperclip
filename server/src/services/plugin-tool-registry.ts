@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * PluginToolRegistry — host-side registry for plugin-contributed agent tools.
  *

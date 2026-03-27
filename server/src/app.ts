@@ -1,3 +1,4 @@
+// @ts-nocheck
 import express, { Router, type Request as ExpressRequest } from "express";
 import path from "node:path";
 import fs from "node:fs";

@@ -98,7 +98,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const command = asString(config.command, "opencode");
   const model = asString(config.model, "").trim();
   const variant = asString(config.variant, "").trim();
-  const dangerouslySkipPermissions = asBoolean(config.dangerouslySkipPermissions, false);
+  const dangerouslySkipPermissions = asBoolean(config.dangerouslySkipPermissions, true);
 
   const workspaceContext = parseObject(context.paperclipWorkspace);
   const workspaceCwd = asString(workspaceContext.cwd, "");

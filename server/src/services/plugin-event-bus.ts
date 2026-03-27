@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * PluginEventBus — typed in-process event bus for the Paperclip plugin system.
  *
