@@ -26,6 +26,7 @@ import {
   detectClaudeLoginRequired,
   detectClaudeRateLimited,
   isClaudeMaxTurnsResult,
+  isClaudePermissionStuckResult,
   isClaudeUnknownSessionError,
 } from "./parse.js";
 
@@ -554,6 +555,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       } as Record<string, unknown>)
       : null;
     const clearSessionForMaxTurns = isClaudeMaxTurnsResult(parsed);
+    const clearSessionForPermissionStuck = isClaudePermissionStuckResult({
+      parsed,
+      stdout: proc.stdout,
+      stderr: proc.stderr,
+    });
 
     return {
       exitCode: proc.exitCode,
@@ -562,8 +568,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       errorMessage:
         (proc.exitCode ?? 0) === 0
           ? null
-          : describeClaudeFailure(parsed) ?? `Claude exited with code ${proc.exitCode ?? -1}`,
-      errorCode: loginMeta.requiresLogin ? "claude_auth_required" : null,
+          : clearSessionForPermissionStuck
+            ? "Agent session stuck on permission prompts. Starting fresh session on next heartbeat."
+            : describeClaudeFailure(parsed) ?? `Claude exited with code ${proc.exitCode ?? -1}`,
+      errorCode: loginMeta.requiresLogin
+        ? "claude_auth_required"
+        : clearSessionForPermissionStuck
+          ? "permission_stuck"
+          : null,
       errorMeta,
       usage,
       sessionId: resolvedSessionId,
@@ -576,7 +588,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       costUsd: parsedStream.costUsd ?? asNumber(parsed.total_cost_usd, 0),
       resultJson: parsed,
       summary: parsedStream.summary || asString(parsed.result, ""),
-      clearSession: clearSessionForMaxTurns || Boolean(opts.clearSessionOnMissingSession && !resolvedSessionId),
+      clearSession: clearSessionForMaxTurns || clearSessionForPermissionStuck || Boolean(opts.clearSessionOnMissingSession && !resolvedSessionId),
     };
   };
 

@@ -183,6 +183,19 @@ export function isClaudeMaxTurnsResult(parsed: Record<string, unknown> | null | 
   return /max(?:imum)?\s+turns?/i.test(resultText);
 }
 
+export function isClaudePermissionStuckResult(input: {
+  parsed: Record<string, unknown> | null;
+  stdout: string;
+  stderr: string;
+}): boolean {
+  const text = [
+    asString(input.parsed?.result, ""),
+    input.stdout,
+    input.stderr,
+  ].join("\n");
+  return /(?:requires?\s+approval|permission.*denied|Bash\s+tool.*(?:requires?|needs?)\s+approval)/i.test(text);
+}
+
 export function isClaudeUnknownSessionError(parsed: Record<string, unknown>): boolean {
   const resultText = asString(parsed.result, "").trim();
   const allMessages = [resultText, ...extractClaudeErrorMessages(parsed)]
