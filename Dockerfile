@@ -30,7 +30,7 @@ WORKDIR /app
 COPY --from=deps /app /app
 COPY . .
 # Build all packages in order (shared, shared-sdk, plugin-sdk, ui, server)
-RUN pnpm -r build
+RUN pnpm --filter @paperclipai/shared build   && pnpm --filter @paperclipai/db build   && pnpm --filter @paperclipai/plugin-sdk build   && pnpm --filter @paperclipai/ui build   && pnpm --filter @paperclipai/server build
 RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" && exit 1)
 
 FROM base AS production
