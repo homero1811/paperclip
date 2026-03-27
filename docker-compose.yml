@@ -16,8 +16,6 @@ services:
     - pgdata:/var/lib/postgresql/data
   server:
     build: .
-    ports:
-    - 3100:3100
     environment:
       DATABASE_URL: postgres://paperclip:paperclip@db:5432/paperclip
       PORT: '3100'
@@ -40,6 +38,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    expose:
+    - 3100
 volumes:
   pgdata: null
   paperclip-data: null
