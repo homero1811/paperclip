@@ -2,7 +2,7 @@ import type { UsageSummary } from "@paperclipai/adapter-utils";
 import { asString, asNumber, parseObject, parseJson } from "@paperclipai/adapter-utils/server-utils";
 
 const CLAUDE_AUTH_REQUIRED_RE = /(?:not\s+logged\s+in|please\s+log\s+in|please\s+run\s+`?claude\s+login`?|login\s+required|requires\s+login|unauthorized|authentication\s+required)/i;
-const CLAUDE_RATE_LIMIT_RE = /(?:you'?ve\s+hit\s+your\s+limit|rate\s+limit|too\s+many\s+requests|usage\s+limit\s+reached|resets?\s+\d{1,2}(?:am|pm))/i;
+const CLAUDE_RATE_LIMIT_RE = /(?:you'?ve\s+hit\s+your\s+limit|rate\s+limit|too\s+many\s+requests|usage\s+limit\s+reached|over\s+(?:your\s+)?(?:api\s+)?limit|resets?\s+\d{1,2}(?:am|pm))/i;
 const URL_RE = /(https?:\/\/[^\s'"`<>()[\]{};,!?]+[^\s'"`<>()[\]{};,!.?:]+)/gi;
 
 export function parseClaudeStreamJson(stdout: string) {
