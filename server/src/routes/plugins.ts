@@ -372,7 +372,11 @@ export function pluginRoutes(
    * Response: `PluginRecord[]`
    */
   router.get("/plugins", async (req, res) => {
-    assertBoard(req);
+    // Allow both board users and agents to list plugins
+    if (req.actor.type !== "board" && req.actor.type !== "agent") {
+      res.status(403).json({ error: "Board or agent access required" });
+      return;
+    }
     const rawStatus = req.query.status;
     if (rawStatus !== undefined) {
       if (typeof rawStatus !== "string" || !(PLUGIN_STATUSES as readonly string[]).includes(rawStatus)) {
@@ -602,7 +606,11 @@ export function pluginRoutes(
    * - `500` — installation succeeded but manifest is missing (indicates a loader bug)
    */
   router.post("/plugins/install", async (req, res) => {
-    assertBoard(req);
+    // Allow both board users and authenticated agents to install plugins
+    if (req.actor.type !== "board" && req.actor.type !== "agent") {
+      res.status(403).json({ error: "Board or agent access required" });
+      return;
+    }
     const { packageName, version, isLocalPath } = req.body as PluginInstallRequest;
 
     // Input validation
