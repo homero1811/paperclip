@@ -161,8 +161,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   if (agentHome) env.AGENT_HOME = agentHome;
   if (workspaceHints.length > 0) env.PAPERCLIP_WORKSPACES_JSON = JSON.stringify(workspaceHints);
 
+  // Agent-provided env vars must not override server-controlled Paperclip vars
+  const PROTECTED_ENV_PREFIXES = ["PAPERCLIP_API_URL", "PAPERCLIP_AGENT_ID", "PAPERCLIP_COMPANY_ID", "PAPERCLIP_RUN_ID"];
   for (const [key, value] of Object.entries(envConfig)) {
-    if (typeof value === "string") env[key] = value;
+    if (typeof value === "string" && !PROTECTED_ENV_PREFIXES.includes(key)) {
+      env[key] = value;
+    }
   }
   if (!hasExplicitApiKey && authToken) {
     env.PAPERCLIP_API_KEY = authToken;

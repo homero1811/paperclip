@@ -235,8 +235,13 @@ async function buildClaudeRuntimeConfig(input: ClaudeExecutionInput): Promise<Cl
     env.PAPERCLIP_RUNTIME_PRIMARY_URL = runtimePrimaryUrl;
   }
 
+  // Agent-provided env vars must not override server-controlled Paperclip vars
+  // to prevent API redirect attacks (Purple Team finding)
+  const PROTECTED_ENV_PREFIXES = ["PAPERCLIP_API_URL", "PAPERCLIP_AGENT_ID", "PAPERCLIP_COMPANY_ID", "PAPERCLIP_RUN_ID"];
   for (const [key, value] of Object.entries(envConfig)) {
-    if (typeof value === "string") env[key] = value;
+    if (typeof value === "string" && !PROTECTED_ENV_PREFIXES.includes(key)) {
+      env[key] = value;
+    }
   }
 
   if (!hasExplicitApiKey && authToken) {

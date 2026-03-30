@@ -1094,6 +1094,22 @@ export function agentRoutes(db: Db) {
     }
 
     const patchData = { ...(req.body as Record<string, unknown>) };
+
+    // Agents modifying themselves cannot change security-sensitive fields
+    // to prevent self-escalation (Purple Team finding)
+    if (req.actor.type === "agent" && req.actor.agentId === existing.id) {
+      const AGENT_SELF_BLOCKED_FIELDS = ["adapterType", "adapterConfig", "runtimeConfig", "role", "status"];
+      const blockedField = AGENT_SELF_BLOCKED_FIELDS.find((f) =>
+        Object.prototype.hasOwnProperty.call(patchData, f),
+      );
+      if (blockedField) {
+        res.status(403).json({
+          error: `Agents cannot modify their own ${blockedField}. Ask a board user or manager to make this change.`,
+        });
+        return;
+      }
+    }
+
     if (Object.prototype.hasOwnProperty.call(patchData, "adapterConfig")) {
       const adapterConfig = asRecord(patchData.adapterConfig);
       if (!adapterConfig) {
