@@ -606,8 +606,10 @@ export function pluginRoutes(
    * - `500` — installation succeeded but manifest is missing (indicates a loader bug)
    */
   router.post("/plugins/install", async (req, res) => {
-    // Allow both board users and authenticated agents to install plugins
-    if (req.actor.type !== "board" && req.actor.type !== "agent") {
+    // Board users can install any plugin; agents can only install from the approved allowlist
+    const isBoard = req.actor.type === "board";
+    const isAgent = req.actor.type === "agent";
+    if (!isBoard && !isAgent) {
       res.status(403).json({ error: "Board or agent access required" });
       return;
     }
@@ -640,6 +642,26 @@ export function pluginRoutes(
     if (!isLocalPath && /[<>:"|?*]/.test(trimmedPackage)) {
       res.status(400).json({ error: "packageName contains invalid characters" });
       return;
+    }
+
+    // Agents can only install from the approved plugin allowlist to prevent
+    // privilege escalation via malicious npm packages
+    if (isAgent) {
+      const AGENT_ALLOWED_PLUGINS = [
+        "paperclip-plugin-github-issues",
+        "@paperclipai/plugin-github-issues",
+        "@paperclipai/plugin-linear",
+        "@paperclipai/plugin-hello-world-example",
+      ];
+      const packageBase = trimmedPackage.replace(/@[\d^~>=<.*]+$/, ""); // strip version suffix
+      const isAllowedNpm = !isLocalPath && AGENT_ALLOWED_PLUGINS.includes(packageBase);
+      const isAllowedLocal = isLocalPath && trimmedPackage.includes("packages/plugins/");
+      if (!isAllowedNpm && !isAllowedLocal) {
+        res.status(403).json({
+          error: `Agents can only install approved plugins. "${trimmedPackage}" is not on the allowlist. Ask a board user to install it.`,
+        });
+        return;
+      }
     }
 
     try {

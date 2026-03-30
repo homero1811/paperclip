@@ -471,8 +471,13 @@ export function pluginUiStaticRoutes(db: Db, options: PluginUiStaticRouteOptions
       res.set("Content-Type", contentType);
     }
 
-    // Step 9: Set CORS headers (plugin UI may be loaded from different origin in dev)
-    res.set("Access-Control-Allow-Origin", "*");
+    // Step 9: Set CORS headers — restrict to deployment origin in production
+    const publicUrl = process.env.PAPERCLIP_PUBLIC_URL;
+    if (publicUrl && process.env.NODE_ENV === "production") {
+      res.set("Access-Control-Allow-Origin", publicUrl);
+    } else {
+      res.set("Access-Control-Allow-Origin", "*");
+    }
 
     // Step 10: Send the file
     // The plugin source can live in Git worktrees (e.g. ".worktrees/...").
