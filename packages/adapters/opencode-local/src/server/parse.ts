@@ -97,3 +97,8 @@ export function isOpenCodeUnknownSessionError(stdout: string, stderr: string): b
     haystack,
   );
 }
+
+export function isOpenCodePermissionRejected(stdout: string, stderr: string): boolean {
+  const haystack = `${stdout}\n${stderr}`;
+  return /permission\s+requested:.*auto-rejecting|user\s+rejected\s+permission/i.test(haystack);
+}
