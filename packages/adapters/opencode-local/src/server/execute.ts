@@ -208,9 +208,20 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   }
 
   const instructionsFilePath = asString(config.instructionsFilePath, "").trim();
-  const resolvedInstructionsFilePath = instructionsFilePath
-    ? path.resolve(cwd, instructionsFilePath)
-    : "";
+  const resolvedInstructionsFilePath = await (async () => {
+    if (!instructionsFilePath) return "";
+    const configuredPath = path.resolve(cwd, instructionsFilePath);
+    // If the configured path exists, use it directly
+    const configuredExists = await fs.stat(configuredPath).then(() => true).catch(() => false);
+    if (configuredExists) return configuredPath;
+    // Fall back to same filename in current workspace cwd (handles workspace ID mismatch)
+    const basename = path.basename(instructionsFilePath);
+    const fallbackPath = path.resolve(cwd, basename);
+    const fallbackExists = await fs.stat(fallbackPath).then(() => true).catch(() => false);
+    if (fallbackExists) return fallbackPath;
+    // Return the original configured path so the error message is informative
+    return configuredPath;
+  })();
   const instructionsDir = resolvedInstructionsFilePath ? `${path.dirname(resolvedInstructionsFilePath)}/` : "";
   let instructionsPrefix = "";
   if (resolvedInstructionsFilePath) {
