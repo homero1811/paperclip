@@ -321,7 +321,17 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const chrome = asBoolean(config.chrome, false);
   const maxTurns = asNumber(config.maxTurnsPerRun, 0);
   const dangerouslySkipPermissions = asBoolean(config.dangerouslySkipPermissions, true);
-  const instructionsFilePath = asString(config.instructionsFilePath, "").trim();
+  const rawInstructionsFilePath = asString(config.instructionsFilePath, "").trim();
+  // If configured path doesn't exist, try the same filename in the current workspace cwd
+  const instructionsFilePath = await (async () => {
+    if (!rawInstructionsFilePath) return "";
+    const configuredExists = await fs.stat(rawInstructionsFilePath).then(() => true).catch(() => false);
+    if (configuredExists) return rawInstructionsFilePath;
+    const basename = path.basename(rawInstructionsFilePath);
+    const fallbackPath = path.resolve(cwd, basename);
+    const fallbackExists = await fs.stat(fallbackPath).then(() => true).catch(() => false);
+    return fallbackExists ? fallbackPath : rawInstructionsFilePath;
+  })();
   const instructionsFileDir = instructionsFilePath ? `${path.dirname(instructionsFilePath)}/` : "";
   const commandNotes = instructionsFilePath
     ? [
