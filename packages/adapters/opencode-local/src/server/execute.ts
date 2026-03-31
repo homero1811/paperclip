@@ -98,7 +98,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const command = asString(config.command, "opencode");
   const model = asString(config.model, "").trim();
   const variant = asString(config.variant, "").trim();
-  const dangerouslySkipPermissions = asBoolean(config.dangerouslySkipPermissions, true);
+  // opencode CLI does not support --dangerously-skip-permissions; config value is accepted but unused.
 
   const workspaceContext = parseObject(context.paperclipWorkspace);
   const workspaceCwd = asString(workspaceContext.cwd, "");
