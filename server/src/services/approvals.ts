@@ -2,17 +2,9 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { approvalComments, approvals } from "@paperclipai/db";
 import { notFound, unprocessable } from "../errors.js";
-import { redactCurrentUserText } from "../log-redaction.js";
 import { agentService } from "./agents.js";
 import { budgetService } from "./budgets.js";
 import { notifyHireApproved } from "./hire-hook.js";
-
-function redactApprovalComment<T extends { body: string }>(comment: T): T {
-  return {
-    ...comment,
-    body: redactCurrentUserText(comment.body),
-  };
-}
 
 export function approvalService(db: Db) {
   const agentsSvc = agentService(db);
@@ -240,7 +232,7 @@ export function approvalService(db: Db) {
           ),
         )
         .orderBy(asc(approvalComments.createdAt))
-        .then((comments) => comments.map(redactApprovalComment));
+        .then((comments) => comments);
     },
 
     addComment: async (
@@ -259,7 +251,7 @@ export function approvalService(db: Db) {
           body,
         })
         .returning()
-        .then((rows) => redactApprovalComment(rows[0]));
+        .then((rows) => rows[0]);
     },
   };
 }
