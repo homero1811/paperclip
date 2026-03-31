@@ -249,7 +249,6 @@ export function approvalService(db: Db) {
       actor: { agentId?: string; userId?: string },
     ) => {
       const existing = await getExistingApproval(approvalId);
-      const redactedBody = redactCurrentUserText(body);
       return db
         .insert(approvalComments)
         .values({
@@ -257,7 +256,7 @@ export function approvalService(db: Db) {
           approvalId,
           authorAgentId: actor.agentId ?? null,
           authorUserId: actor.userId ?? null,
-          body: redactedBody,
+          body,
         })
         .returning()
         .then((rows) => redactApprovalComment(rows[0]));
