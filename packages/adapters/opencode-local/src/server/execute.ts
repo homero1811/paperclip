@@ -161,6 +161,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   if (agentHome) env.AGENT_HOME = agentHome;
   if (workspaceHints.length > 0) env.PAPERCLIP_WORKSPACES_JSON = JSON.stringify(workspaceHints);
 
+  // Set TMPDIR inside workspace so opencode's sandbox doesn't reject /tmp access
+  const workspaceTmpDir = path.join(cwd, ".tmp");
+  await fs.mkdir(workspaceTmpDir, { recursive: true });
+  env.TMPDIR = workspaceTmpDir;
+
   // Agent-provided env vars must not override server-controlled Paperclip vars
   const PROTECTED_ENV_PREFIXES = ["PAPERCLIP_API_URL", "PAPERCLIP_AGENT_ID", "PAPERCLIP_COMPANY_ID", "PAPERCLIP_RUN_ID"];
   for (const [key, value] of Object.entries(envConfig)) {
