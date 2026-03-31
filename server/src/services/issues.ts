@@ -24,7 +24,6 @@ import {
   defaultIssueExecutionWorkspaceSettingsForProject,
   parseProjectExecutionWorkspacePolicy,
 } from "./execution-workspace-policy.js";
-import { redactCurrentUserText } from "../log-redaction.js";
 import { resolveIssueGoalId, resolveNextIssueGoalId } from "./issue-goal-fallback.js";
 import { getDefaultCompanyGoal } from "./goals.js";
 
@@ -93,13 +92,6 @@ type IssueUserContextInput = {
   createdAt: Date | string;
   updatedAt: Date | string;
 };
-
-function redactIssueComment<T extends { body: string }>(comment: T): T {
-  return {
-    ...comment,
-    body: redactCurrentUserText(comment.body),
-  };
-}
 
 function sameRunLock(checkoutRunId: string | null, actorRunId: string | null) {
   if (actorRunId) return checkoutRunId === actorRunId;
@@ -1123,7 +1115,7 @@ export function issueService(db: Db) {
         );
 
       const comments = limit ? await query.limit(limit) : await query;
-      return comments.map(redactIssueComment);
+      return comments;
     },
 
     getCommentCursor: async (issueId: string) => {
@@ -1161,7 +1153,7 @@ export function issueService(db: Db) {
         .where(eq(issueComments.id, commentId))
         .then((rows) => {
           const comment = rows[0] ?? null;
-          return comment ? redactIssueComment(comment) : null;
+          return comment ?? null;
         }),
 
     addComment: async (issueId: string, body: string, actor: { agentId?: string; userId?: string }) => {
@@ -1173,7 +1165,8 @@ export function issueService(db: Db) {
 
       if (!issue) throw notFound("Issue not found");
 
-      const redactedBody = redactCurrentUserText(body);
+      // Do NOT redact comment body — it's user/agent-facing content, not debug logs.
+      // Redacting paths (e.g. /paperclip → []) corrupts document links and references.
       const [comment] = await db
         .insert(issueComments)
         .values({
@@ -1181,7 +1174,7 @@ export function issueService(db: Db) {
           issueId,
           authorAgentId: actor.agentId ?? null,
           authorUserId: actor.userId ?? null,
-          body: redactedBody,
+          body,
         })
         .returning();
 
@@ -1191,7 +1184,7 @@ export function issueService(db: Db) {
         .set({ updatedAt: new Date() })
         .where(eq(issues.id, issueId));
 
-      return redactIssueComment(comment);
+      return comment;
     },
 
     createAttachment: async (input: {
