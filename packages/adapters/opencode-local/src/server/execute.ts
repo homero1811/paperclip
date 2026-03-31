@@ -18,7 +18,7 @@ import {
   renderTemplate,
   runChildProcess,
 } from "@paperclipai/adapter-utils/server-utils";
-import { isOpenCodeUnknownSessionError, parseOpenCodeJsonl } from "./parse.js";
+import { isOpenCodeUnknownSessionError, isOpenCodePermissionRejected, parseOpenCodeJsonl } from "./parse.js";
 import { ensureOpenCodeModelConfiguredAndAvailable } from "./models.js";
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
@@ -400,6 +400,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const initial = await runAttempt(sessionId);
   const initialFailed =
     !initial.proc.timedOut && ((initial.proc.exitCode ?? 0) !== 0 || Boolean(initial.parsed.errorMessage));
+
+  // Retry with a fresh session if the session is unknown
   if (
     sessionId &&
     initialFailed &&
@@ -408,6 +410,22 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     await onLog(
       "stderr",
       `[paperclip] OpenCode session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
+    );
+    const retry = await runAttempt(null);
+    return toResult(retry, true);
+  }
+
+  // Clear session and retry if the agent hit permission rejections (e.g. accessing
+  // a different agent's workspace directory). A fresh session avoids the stale
+  // file-path context that caused the rejection.
+  if (
+    sessionId &&
+    initialFailed &&
+    isOpenCodePermissionRejected(initial.proc.stdout, initial.rawStderr)
+  ) {
+    await onLog(
+      "stderr",
+      `[paperclip] OpenCode session "${sessionId}" hit permission rejection; retrying with a fresh session.\n`,
     );
     const retry = await runAttempt(null);
     return toResult(retry, true);
