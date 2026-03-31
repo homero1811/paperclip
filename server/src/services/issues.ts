@@ -94,11 +94,10 @@ type IssueUserContextInput = {
   updatedAt: Date | string;
 };
 
+// Comments are user/agent-facing content — return as-is without path redaction.
+// Redacting home paths (e.g. /paperclip → []) was corrupting document links.
 function redactIssueComment<T extends { body: string }>(comment: T): T {
-  return {
-    ...comment,
-    body: redactCurrentUserText(comment.body),
-  };
+  return comment;
 }
 
 function sameRunLock(checkoutRunId: string | null, actorRunId: string | null) {
@@ -1173,7 +1172,8 @@ export function issueService(db: Db) {
 
       if (!issue) throw notFound("Issue not found");
 
-      const redactedBody = redactCurrentUserText(body);
+      // Do NOT redact comment body — it's user/agent-facing content, not debug logs.
+      // Redacting paths (e.g. /paperclip → []) corrupts document links and references.
       const [comment] = await db
         .insert(issueComments)
         .values({
@@ -1181,7 +1181,7 @@ export function issueService(db: Db) {
           issueId,
           authorAgentId: actor.agentId ?? null,
           authorUserId: actor.userId ?? null,
-          body: redactedBody,
+          body,
         })
         .returning();
 
