@@ -24,7 +24,6 @@ import {
   defaultIssueExecutionWorkspaceSettingsForProject,
   parseProjectExecutionWorkspacePolicy,
 } from "./execution-workspace-policy.js";
-import { redactCurrentUserText } from "../log-redaction.js";
 import { resolveIssueGoalId, resolveNextIssueGoalId } from "./issue-goal-fallback.js";
 import { getDefaultCompanyGoal } from "./goals.js";
 
@@ -93,12 +92,6 @@ type IssueUserContextInput = {
   createdAt: Date | string;
   updatedAt: Date | string;
 };
-
-// Comments are user/agent-facing content — return as-is without path redaction.
-// Redacting home paths (e.g. /paperclip → []) was corrupting document links.
-function redactIssueComment<T extends { body: string }>(comment: T): T {
-  return comment;
-}
 
 function sameRunLock(checkoutRunId: string | null, actorRunId: string | null) {
   if (actorRunId) return checkoutRunId === actorRunId;
@@ -1122,7 +1115,7 @@ export function issueService(db: Db) {
         );
 
       const comments = limit ? await query.limit(limit) : await query;
-      return comments.map(redactIssueComment);
+      return comments;
     },
 
     getCommentCursor: async (issueId: string) => {
@@ -1160,7 +1153,7 @@ export function issueService(db: Db) {
         .where(eq(issueComments.id, commentId))
         .then((rows) => {
           const comment = rows[0] ?? null;
-          return comment ? redactIssueComment(comment) : null;
+          return comment ?? null;
         }),
 
     addComment: async (issueId: string, body: string, actor: { agentId?: string; userId?: string }) => {
@@ -1191,7 +1184,7 @@ export function issueService(db: Db) {
         .set({ updatedAt: new Date() })
         .where(eq(issues.id, issueId));
 
-      return redactIssueComment(comment);
+      return comment;
     },
 
     createAttachment: async (input: {
