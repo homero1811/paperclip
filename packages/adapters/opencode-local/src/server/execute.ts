@@ -279,7 +279,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const buildArgs = (resumeSessionId: string | null) => {
     const args = ["run", "--format", "json"];
     if (resumeSessionId) args.push("--session", resumeSessionId);
-    if (dangerouslySkipPermissions) args.push("--dangerously-skip-permissions");
+    // Note: opencode CLI does not support --dangerously-skip-permissions.
+    // It handles permissions internally. Do NOT pass this flag.
     if (model) args.push("--model", model);
     if (variant) args.push("--variant", variant);
     if (extraArgs.length > 0) args.push(...extraArgs);
