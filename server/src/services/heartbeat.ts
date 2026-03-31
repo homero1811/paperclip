@@ -1,4 +1,6 @@
 import fs from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import path from "node:path";
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
@@ -1612,6 +1614,29 @@ export function heartbeatService(db: Db) {
           ]
         : []),
     ];
+    // Auto-clone repo into workspace if repoUrl is configured but workspace dir is empty
+    if (executionWorkspace.repoUrl && executionWorkspace.cwd) {
+      const cwdContents = await fs.readdir(executionWorkspace.cwd).catch(() => []);
+      const hasGitDir = cwdContents.includes(".git");
+      if (!hasGitDir && cwdContents.filter((f) => f !== ".tmp").length === 0) {
+        try {
+          const execFileAsync = promisify(execFile);
+          await execFileAsync("git", ["clone", "--depth", "1", executionWorkspace.repoUrl, "."], {
+            cwd: executionWorkspace.cwd,
+            timeout: 60_000,
+          });
+          runtimeWorkspaceWarnings.push(
+            `Auto-cloned ${executionWorkspace.repoUrl} into workspace.`,
+          );
+        } catch (cloneErr) {
+          const msg = cloneErr instanceof Error ? cloneErr.message : String(cloneErr);
+          runtimeWorkspaceWarnings.push(
+            `Failed to auto-clone ${executionWorkspace.repoUrl}: ${msg}`,
+          );
+        }
+      }
+    }
+
     context.paperclipWorkspace = {
       cwd: executionWorkspace.cwd,
       source: executionWorkspace.source,
