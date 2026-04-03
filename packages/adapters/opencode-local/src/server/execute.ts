@@ -59,6 +59,43 @@ async function resolvePaperclipSkillsDir(): Promise<string | null> {
   return null;
 }
 
+async function ensureOpenCodePermissions(cwd: string, onLog: AdapterExecutionContext["onLog"]) {
+  // OpenCode reads ~/.claude/settings.json for tool permissions, same as Claude Code.
+  // Write a permissive settings file that allows /tmp, the workspace, and all
+  // Paperclip instance paths so agents don't hit "external_directory auto-rejecting".
+  const claudeDir = path.join(os.homedir(), ".claude");
+  const settingsPath = path.join(claudeDir, "settings.json");
+  try {
+    await fs.mkdir(claudeDir, { recursive: true });
+    const existingRaw = await fs.readFile(settingsPath, "utf8").catch(() => "{}");
+    const existing = JSON.parse(existingRaw) as Record<string, unknown>;
+    const currentAllow = Array.isArray(existing.permissions_accept_list)
+      ? (existing.permissions_accept_list as string[])
+      : [];
+    const requiredPatterns = [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      `external_directory(${cwd}/**)`,
+      "external_directory(/tmp/**)",
+      "external_directory(/paperclip/**)",
+    ];
+    const merged = Array.from(new Set([...currentAllow, ...requiredPatterns]));
+    if (merged.length !== currentAllow.length || !merged.every((v, i) => currentAllow[i] === v)) {
+      existing.permissions_accept_list = merged;
+      await fs.writeFile(settingsPath, JSON.stringify(existing, null, 2), "utf8");
+    }
+  } catch (err) {
+    await onLog(
+      "stderr",
+      `[paperclip] Warning: could not write OpenCode permissions: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
+  }
+}
+
 async function ensureOpenCodeSkillsInjected(onLog: AdapterExecutionContext["onLog"]) {
   const skillsDir = await resolvePaperclipSkillsDir();
   if (!skillsDir) return;
@@ -118,6 +155,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const cwd = effectiveWorkspaceCwd || configuredCwd || process.cwd();
   await ensureAbsoluteDirectory(cwd, { createIfMissing: true });
   await ensureOpenCodeSkillsInjected(onLog);
+  await ensureOpenCodePermissions(cwd, onLog);
 
   const envConfig = parseObject(config.env);
   const hasExplicitApiKey =
