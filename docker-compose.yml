@@ -14,6 +14,14 @@ services:
       retries: 30
     volumes:
     - pgdata:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
   server:
     build: .
     environment:
@@ -40,6 +48,14 @@ services:
         condition: service_healthy
     expose:
     - 3100
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 volumes:
   pgdata: null
   paperclip-data: null
