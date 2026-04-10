@@ -59,35 +59,29 @@ async function resolvePaperclipSkillsDir(): Promise<string | null> {
   return null;
 }
 
-async function ensureOpenCodePermissions(cwd: string, onLog: AdapterExecutionContext["onLog"]) {
-  // OpenCode reads ~/.claude/settings.json for tool permissions, same as Claude Code.
-  // Write a permissive settings file that allows /tmp, the workspace, and all
-  // Paperclip instance paths so agents don't hit "external_directory auto-rejecting".
+// Static permissive settings written once. No per-run merging needed — avoids
+// race conditions when multiple agents run concurrently.
+let _permissionsWritten = false;
+async function ensureOpenCodePermissions(_cwd: string, onLog: AdapterExecutionContext["onLog"]) {
+  if (_permissionsWritten) return;
   const claudeDir = path.join(os.homedir(), ".claude");
   const settingsPath = path.join(claudeDir, "settings.json");
   try {
     await fs.mkdir(claudeDir, { recursive: true });
-    const existingRaw = await fs.readFile(settingsPath, "utf8").catch(() => "{}");
-    const existing = JSON.parse(existingRaw) as Record<string, unknown>;
-    const currentAllow = Array.isArray(existing.permissions_accept_list)
-      ? (existing.permissions_accept_list as string[])
-      : [];
-    const requiredPatterns = [
-      "Bash(*)",
-      "Read(*)",
-      "Write(*)",
-      "Edit(*)",
-      "Glob(*)",
-      "Grep(*)",
-      `external_directory(${cwd}/**)`,
-      "external_directory(/tmp/**)",
-      "external_directory(/paperclip/**)",
-    ];
-    const merged = Array.from(new Set([...currentAllow, ...requiredPatterns]));
-    if (merged.length !== currentAllow.length || !merged.every((v, i) => currentAllow[i] === v)) {
-      existing.permissions_accept_list = merged;
-      await fs.writeFile(settingsPath, JSON.stringify(existing, null, 2), "utf8");
-    }
+    const settings = {
+      permissions_accept_list: [
+        "Bash(*)",
+        "Read(*)",
+        "Write(*)",
+        "Edit(*)",
+        "Glob(*)",
+        "Grep(*)",
+        "external_directory(/tmp/**)",
+        "external_directory(/paperclip/**)",
+      ],
+    };
+    await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf8");
+    _permissionsWritten = true;
   } catch (err) {
     await onLog(
       "stderr",
