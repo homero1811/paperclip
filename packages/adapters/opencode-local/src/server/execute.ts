@@ -59,15 +59,29 @@ async function resolvePaperclipSkillsDir(): Promise<string | null> {
   return null;
 }
 
+// Default MCP servers available to all OpenCode agents
+const DEFAULT_MCP_SERVERS: Record<string, Record<string, unknown>> = {
+  "code-review-graph": {
+    "url": "https://code-review-graph.tsunamiautomation.com/sse",
+  },
+};
+
 // Static permissive settings written once. No per-run merging needed — avoids
 // race conditions when multiple agents run concurrently.
-let _permissionsWritten = false;
-async function ensureOpenCodePermissions(_cwd: string, onLog: AdapterExecutionContext["onLog"]) {
-  if (_permissionsWritten) return;
+let _settingsWritten = false;
+async function ensureOpenCodeSettings(
+  agentMcpServers: Record<string, unknown>,
+  onLog: AdapterExecutionContext["onLog"],
+) {
+  // Only rewrite if not yet written this process lifetime, or if agent has custom MCP servers
+  const hasCustomMcp = Object.keys(agentMcpServers).length > 0;
+  if (_settingsWritten && !hasCustomMcp) return;
+
   const claudeDir = path.join(os.homedir(), ".claude");
   const settingsPath = path.join(claudeDir, "settings.json");
   try {
     await fs.mkdir(claudeDir, { recursive: true });
+    const mergedMcpServers = { ...DEFAULT_MCP_SERVERS, ...agentMcpServers };
     const settings = {
       permissions_accept_list: [
         "Bash(*)",
@@ -85,39 +99,18 @@ async function ensureOpenCodePermissions(_cwd: string, onLog: AdapterExecutionCo
         "external_directory(/tmp/**)",
         "external_directory(/paperclip/**)",
       ],
+      mcpServers: mergedMcpServers,
     };
     await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf8");
-    _permissionsWritten = true;
+    _settingsWritten = true;
+    const mcpNames = Object.keys(mergedMcpServers);
+    if (mcpNames.length > 0) {
+      await onLog("stderr", `[paperclip] MCP servers configured: ${mcpNames.join(", ")}\n`);
+    }
   } catch (err) {
     await onLog(
       "stderr",
-      `[paperclip] Warning: could not write OpenCode permissions: ${err instanceof Error ? err.message : String(err)}\n`,
-    );
-  }
-}
-
-async function ensureOpenCodeMcpConfig(
-  mcpServers: Record<string, unknown>,
-  onLog: AdapterExecutionContext["onLog"],
-) {
-  // Write MCP server configuration to ~/.claude/settings.json so OpenCode
-  // discovers and connects to configured MCP servers at startup.
-  const claudeDir = path.join(os.homedir(), ".claude");
-  const settingsPath = path.join(claudeDir, "settings.json");
-  try {
-    await fs.mkdir(claudeDir, { recursive: true });
-    const existingRaw = await fs.readFile(settingsPath, "utf8").catch(() => "{}");
-    const existing = JSON.parse(existingRaw) as Record<string, unknown>;
-    existing.mcpServers = mcpServers;
-    await fs.writeFile(settingsPath, JSON.stringify(existing, null, 2), "utf8");
-    await onLog(
-      "stderr",
-      `[paperclip] Configured ${Object.keys(mcpServers).length} MCP server(s) in settings.\n`,
-    );
-  } catch (err) {
-    await onLog(
-      "stderr",
-      `[paperclip] Warning: could not write MCP config: ${err instanceof Error ? err.message : String(err)}\n`,
+      `[paperclip] Warning: could not write settings: ${err instanceof Error ? err.message : String(err)}\n`,
     );
   }
 }
@@ -163,11 +156,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const variant = asString(config.variant, "").trim();
   // opencode CLI does not support --dangerously-skip-permissions; config value is accepted but unused.
 
-  // Write MCP server config if mcpServers is configured in adapterConfig
+  // Parse agent-specific MCP servers from config (merged with defaults later)
   const mcpServers = parseObject(config.mcpServers);
-  if (Object.keys(mcpServers).length > 0) {
-    await ensureOpenCodeMcpConfig(mcpServers, onLog);
-  }
 
   const workspaceContext = parseObject(context.paperclipWorkspace);
   const workspaceCwd = asString(workspaceContext.cwd, "");
@@ -187,7 +177,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const cwd = effectiveWorkspaceCwd || configuredCwd || process.cwd();
   await ensureAbsoluteDirectory(cwd, { createIfMissing: true });
   await ensureOpenCodeSkillsInjected(onLog);
-  await ensureOpenCodePermissions(cwd, onLog);
+  await ensureOpenCodeSettings(mcpServers, onLog);
 
   const envConfig = parseObject(config.env);
   const hasExplicitApiKey =

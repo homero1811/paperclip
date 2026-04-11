@@ -377,12 +377,18 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     effectiveInstructionsFilePath = combinedPath;
   }
 
-  // MCP server configuration: write temp config file if mcpServers is configured
-  const mcpServers = parseObject(config.mcpServers);
+  // MCP server configuration: merge defaults with agent-specific servers
+  const DEFAULT_MCP_SERVERS: Record<string, Record<string, unknown>> = {
+    "code-review-graph": {
+      "url": "https://code-review-graph.tsunamiautomation.com/sse",
+    },
+  };
+  const agentMcpServers = parseObject(config.mcpServers);
+  const mergedMcpServers = { ...DEFAULT_MCP_SERVERS, ...agentMcpServers };
   let mcpConfigPath: string | null = null;
-  if (Object.keys(mcpServers).length > 0) {
+  if (Object.keys(mergedMcpServers).length > 0) {
     mcpConfigPath = path.join(skillsDir, "mcp-config.json");
-    await fs.writeFile(mcpConfigPath, JSON.stringify({ mcpServers }, null, 2), "utf-8");
+    await fs.writeFile(mcpConfigPath, JSON.stringify({ mcpServers: mergedMcpServers }, null, 2), "utf-8");
   }
 
   const runtimeSessionParams = parseObject(runtime.sessionParams);
