@@ -377,6 +377,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     effectiveInstructionsFilePath = combinedPath;
   }
 
+  // MCP server configuration: write temp config file if mcpServers is configured
+  const mcpServers = parseObject(config.mcpServers);
+  let mcpConfigPath: string | null = null;
+  if (Object.keys(mcpServers).length > 0) {
+    mcpConfigPath = path.join(skillsDir, "mcp-config.json");
+    await fs.writeFile(mcpConfigPath, JSON.stringify({ mcpServers }, null, 2), "utf-8");
+  }
+
   const runtimeSessionParams = parseObject(runtime.sessionParams);
   const runtimeSessionId = asString(runtimeSessionParams.sessionId, runtime.sessionId ?? "");
   const runtimeSessionCwd = asString(runtimeSessionParams.cwd, "");
@@ -430,6 +438,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       args.push("--append-system-prompt-file", effectiveInstructionsFilePath);
     }
     args.push("--add-dir", skillsDir);
+    if (mcpConfigPath) args.push("--mcp-config", mcpConfigPath);
     if (extraArgs.length > 0) args.push(...extraArgs);
     return args;
   };
