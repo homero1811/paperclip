@@ -130,37 +130,6 @@ export function ClaudeLocalAdvancedFields({
           />
         )}
       </Field>
-      <Field label="MCP Servers (JSON)" hint="JSON object of MCP server configs. Example: {&quot;code-review&quot;: {&quot;url&quot;: &quot;https://example.com/mcp&quot;}}">
-        {isCreate ? (
-          <textarea
-            className={inputClass}
-            rows={3}
-            placeholder='{"server-name": {"url": "https://..."}}'
-            value={values!.mcpServersJson ?? ""}
-            onChange={(e) => set!({ mcpServersJson: e.target.value })}
-          />
-        ) : (
-          <DraftTextInput
-            value={eff(
-              "adapterConfig",
-              "mcpServersJson",
-              JSON.stringify(config.mcpServers ?? {}, null, 2),
-            )}
-            onCommit={(v) => {
-              try {
-                const parsed = v.trim() ? JSON.parse(v) : {};
-                mark("adapterConfig", "mcpServers", parsed);
-              } catch {
-                // Invalid JSON — don't save
-              }
-            }}
-            immediate
-            className={inputClass}
-            multiline
-            rows={3}
-          />
-        )}
-      </Field>
     </>
   );
 }
