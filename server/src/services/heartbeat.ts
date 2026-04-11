@@ -1,6 +1,4 @@
 import fs from "node:fs/promises";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import path from "node:path";
 import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
@@ -1614,34 +1612,9 @@ export function heartbeatService(db: Db) {
           ]
         : []),
     ];
-    // Auto-clone repo into workspace if repoUrl is configured but workspace dir is empty.
-    // Use a sentinel file to prevent repeated clones on every heartbeat tick.
-    if (executionWorkspace.repoUrl && executionWorkspace.cwd) {
-      const cloneSentinel = path.join(executionWorkspace.cwd, ".paperclip-clone-attempted");
-      const hasGitDir = await fs.stat(path.join(executionWorkspace.cwd, ".git")).then(() => true).catch(() => false);
-      const alreadyAttempted = await fs.stat(cloneSentinel).then(() => true).catch(() => false);
-      if (!hasGitDir && !alreadyAttempted) {
-        // Write sentinel BEFORE cloning to prevent concurrent/repeated attempts
-        await fs.writeFile(cloneSentinel, new Date().toISOString(), "utf8").catch(() => {});
-        try {
-          const execFileAsync = promisify(execFile);
-          await execFileAsync("git", ["clone", "--depth", "1", executionWorkspace.repoUrl, "."], {
-            cwd: executionWorkspace.cwd,
-            timeout: 120_000,
-          });
-          runtimeWorkspaceWarnings.push(
-            `Auto-cloned ${executionWorkspace.repoUrl} into workspace.`,
-          );
-          // Remove sentinel on success — .git dir now serves as the indicator
-          await fs.unlink(cloneSentinel).catch(() => {});
-        } catch (cloneErr) {
-          const msg = cloneErr instanceof Error ? cloneErr.message : String(cloneErr);
-          runtimeWorkspaceWarnings.push(
-            `Failed to auto-clone ${executionWorkspace.repoUrl}: ${msg}`,
-          );
-        }
-      }
-    }
+    // Note: Auto-clone was removed to prevent disk exhaustion (ENOSPC).
+    // Agents should use `git clone` within their heartbeat if they need repo access,
+    // or the project workspace should have a local cwd configured.
 
     context.paperclipWorkspace = {
       cwd: executionWorkspace.cwd,
