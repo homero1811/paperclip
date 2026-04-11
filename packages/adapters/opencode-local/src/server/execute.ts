@@ -59,13 +59,6 @@ async function resolvePaperclipSkillsDir(): Promise<string | null> {
   return null;
 }
 
-// Default MCP servers available to all OpenCode agents
-const DEFAULT_MCP_SERVERS: Record<string, Record<string, unknown>> = {
-  "code-review-graph": {
-    "url": "https://code-review-graph.tsunamiautomation.com/sse",
-  },
-};
-
 // Static permissive settings written once. No per-run merging needed — avoids
 // race conditions when multiple agents run concurrently.
 let _settingsWritten = false;
@@ -81,8 +74,7 @@ async function ensureOpenCodeSettings(
   const settingsPath = path.join(claudeDir, "settings.json");
   try {
     await fs.mkdir(claudeDir, { recursive: true });
-    const mergedMcpServers = { ...DEFAULT_MCP_SERVERS, ...agentMcpServers };
-    const settings = {
+    const settings: Record<string, unknown> = {
       permissions_accept_list: [
         "Bash(*)",
         "Read(*)",
@@ -99,14 +91,14 @@ async function ensureOpenCodeSettings(
         "external_directory(/tmp/**)",
         "external_directory(/paperclip/**)",
       ],
-      mcpServers: mergedMcpServers,
     };
+    // Only include MCP servers if agent has them explicitly configured
+    if (hasCustomMcp) {
+      settings.mcpServers = agentMcpServers;
+      await onLog("stderr", `[paperclip] MCP servers configured: ${Object.keys(agentMcpServers).join(", ")}\n`);
+    }
     await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf8");
     _settingsWritten = true;
-    const mcpNames = Object.keys(mergedMcpServers);
-    if (mcpNames.length > 0) {
-      await onLog("stderr", `[paperclip] MCP servers configured: ${mcpNames.join(", ")}\n`);
-    }
   } catch (err) {
     await onLog(
       "stderr",
