@@ -76,6 +76,12 @@ async function ensureOpenCodePermissions(_cwd: string, onLog: AdapterExecutionCo
         "Edit(*)",
         "Glob(*)",
         "Grep(*)",
+        "Skill(*)",
+        "WebFetch(*)",
+        "WebSearch(*)",
+        "NotebookEdit(*)",
+        "TodoWrite(*)",
+        "mcp__*",
         "external_directory(/tmp/**)",
         "external_directory(/paperclip/**)",
       ],
@@ -86,6 +92,32 @@ async function ensureOpenCodePermissions(_cwd: string, onLog: AdapterExecutionCo
     await onLog(
       "stderr",
       `[paperclip] Warning: could not write OpenCode permissions: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
+  }
+}
+
+async function ensureOpenCodeMcpConfig(
+  mcpServers: Record<string, unknown>,
+  onLog: AdapterExecutionContext["onLog"],
+) {
+  // Write MCP server configuration to ~/.claude/settings.json so OpenCode
+  // discovers and connects to configured MCP servers at startup.
+  const claudeDir = path.join(os.homedir(), ".claude");
+  const settingsPath = path.join(claudeDir, "settings.json");
+  try {
+    await fs.mkdir(claudeDir, { recursive: true });
+    const existingRaw = await fs.readFile(settingsPath, "utf8").catch(() => "{}");
+    const existing = JSON.parse(existingRaw) as Record<string, unknown>;
+    existing.mcpServers = mcpServers;
+    await fs.writeFile(settingsPath, JSON.stringify(existing, null, 2), "utf8");
+    await onLog(
+      "stderr",
+      `[paperclip] Configured ${Object.keys(mcpServers).length} MCP server(s) in settings.\n`,
+    );
+  } catch (err) {
+    await onLog(
+      "stderr",
+      `[paperclip] Warning: could not write MCP config: ${err instanceof Error ? err.message : String(err)}\n`,
     );
   }
 }
@@ -130,6 +162,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const model = asString(config.model, "").trim();
   const variant = asString(config.variant, "").trim();
   // opencode CLI does not support --dangerously-skip-permissions; config value is accepted but unused.
+
+  // Write MCP server config if mcpServers is configured in adapterConfig
+  const mcpServers = parseObject(config.mcpServers);
+  if (Object.keys(mcpServers).length > 0) {
+    await ensureOpenCodeMcpConfig(mcpServers, onLog);
+  }
 
   const workspaceContext = parseObject(context.paperclipWorkspace);
   const workspaceCwd = asString(workspaceContext.cwd, "");
