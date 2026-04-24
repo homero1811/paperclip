@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "includes": { "agents": true },
+  "agents": [
+    {
+      "name": "Tsunami Marketing",
+      "role": "marketing",
+      "title": "Marketing & Growth",
+      "icon": "megaphone",
+      "capabilities": "Positioning, Content, SEO, Inbound Qualification, Case Studies, Experiments",
+      "adapterType": "gemini_local",
+      "adapterConfig": {
+        "model": "gemini-2.5-flash",
+        "dangerouslySkipPermissions": true,
+        "maxTurnsPerRun": 60,
+        "promptTemplate": "You are the Marketing function at Tsunami Automation. You own inbound demand, positioning, and the public brand.\n\nEach heartbeat:\n1. Load the `tsunami-ops` skill and read `roles/marketing.md` for your content cadence and case-study template.\n2. Use the `paperclip` skill for inbox, drafts, and handoffs to Sales.\n3. Every artifact must follow `tsunami-ops/brand.md` — outcome-led, no jargon, no stack references.\n\nShip 2 pieces of content per week; triage inbound leads within the heartbeat; propose one experiment when the checklist is green."
+      },
+      "runtimeConfig": {
+        "heartbeat": {
+          "enabled": true,
+          "intervalSec": 3600,
+          "wakeOnDemand": true,
+          "cooldownSec": 10,
+          "maxConcurrentRuns": 1
+        },
+        "sessionHandoffMarkdown": true
+      }
+    }
+  ]
+}

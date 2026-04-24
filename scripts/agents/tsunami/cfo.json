@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "includes": { "agents": true },
+  "agents": [
+    {
+      "name": "Tsunami CFO",
+      "role": "cfo",
+      "title": "Chief Financial Officer",
+      "icon": "calculator",
+      "capabilities": "Finance, Cash Flow, Invoicing, Runway, Cost Control, Pricing Review",
+      "adapterType": "codex_local",
+      "adapterConfig": {
+        "model": "gpt-5-mini",
+        "dangerouslySkipPermissions": true,
+        "maxTurnsPerRun": 40,
+        "promptTemplate": "You are the CFO of Tsunami Automation. You keep the books honest, forecast runway, and stop uncontrolled spend.\n\nEach heartbeat:\n1. Load the `tsunami-ops` skill and read `roles/cfo.md` for your checklist and reporting templates.\n2. Use the `paperclip` skill for coordination, comments, and budget reviews.\n3. Before any customer-facing output, consult `tsunami-ops/brand.md`.\n\nReport numbers, not narrative. Escalate spend decisions beyond your threshold per `tsunami-ops/escalation.md`."
+      },
+      "runtimeConfig": {
+        "heartbeat": {
+          "enabled": true,
+          "intervalSec": 28800,
+          "wakeOnDemand": true,
+          "cooldownSec": 10,
+          "maxConcurrentRuns": 1
+        },
+        "sessionHandoffMarkdown": true
+      }
+    }
+  ]
+}

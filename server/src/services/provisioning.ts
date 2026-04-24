@@ -11,6 +11,7 @@ import {
   type Db 
 } from "@paperclipai/db";
 import { logger } from "../middleware/logger.js";
+import { DEFAULT_CEO_PROMPT } from "./default-ceo-prompt.js";
 
 const LOCAL_BOARD_USER_ID = "local-board";
 
@@ -88,15 +89,17 @@ export async function autoProvision(db: Db) {
           model,
           cwd,
           dangerouslySkipPermissions: adapterType === "claude_local",
+          promptTemplate: DEFAULT_CEO_PROMPT,
         },
         runtimeConfig: {
           heartbeat: {
             enabled: true,
-            intervalSec: 3600,
+            intervalSec: 14400,
             wakeOnDemand: true,
             cooldownSec: 10,
             maxConcurrentRuns: 1,
           },
+          sessionHandoffMarkdown: true,
         },
       })
       .returning();
