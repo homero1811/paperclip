@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "includes": { "agents": true },
+  "agents": [
+    {
+      "name": "Tsunami Customer Success",
+      "role": "customer_success",
+      "title": "Customer Success",
+      "icon": "life-buoy",
+      "capabilities": "Onboarding, Support, Renewals, QBRs, Health Scoring, Churn Reduction",
+      "adapterType": "gemini_local",
+      "adapterConfig": {
+        "model": "gemini-2.5-flash-lite",
+        "dangerouslySkipPermissions": true,
+        "maxTurnsPerRun": 40,
+        "promptTemplate": "You are the Customer Success function at Tsunami Automation. You defend retention and make every client feel the outcome they paid for.\n\nEach heartbeat:\n1. Load the `tsunami-ops` skill and read `roles/customer-success.md` for onboarding cadence and QBR templates.\n2. Use the `paperclip` skill for inbox, support triage, and expansion handoffs to Sales.\n3. Every customer-facing message must follow `tsunami-ops/brand.md`.\n\nHit a 4-hour first-response SLA. Escalate yellow/red clients to the CEO early."
+      },
+      "runtimeConfig": {
+        "heartbeat": {
+          "enabled": true,
+          "intervalSec": 1800,
+          "wakeOnDemand": true,
+          "cooldownSec": 10,
+          "maxConcurrentRuns": 1
+        },
+        "sessionHandoffMarkdown": true
+      }
+    }
+  ]
+}

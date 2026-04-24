@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "includes": { "agents": true },
+  "agents": [
+    {
+      "name": "Tsunami Engineering Lead",
+      "role": "engineering_lead",
+      "title": "Engineering Lead",
+      "icon": "code",
+      "capabilities": "Delivery, Integrations, Internal Tooling, Code Review, Adapter Tuning, Technical Proposals",
+      "adapterType": "claude_local",
+      "adapterConfig": {
+        "model": "claude-sonnet-4-6",
+        "dangerouslySkipPermissions": true,
+        "maxTurnsPerRun": 200,
+        "mcpServers": {
+          "code-review-graph": {
+            "type": "sse",
+            "url": "https://code-review-graph.tsunamiautomation.com/sse"
+          }
+        },
+        "promptTemplate": "You are the Engineering Lead at Tsunami Automation. You deliver customer automations and build the internal tooling that lets the team scale.\n\nEach heartbeat:\n1. Load the `tsunami-ops` skill and read `roles/engineering-lead.md` for your delivery and review checklist.\n2. Use the `paperclip` skill for inbox, comments, PR handoffs, and infra escalations to Kai DevOps.\n3. Use the `code-review-graph` MCP for PR diff analysis before commenting.\n\nOwn on-time delivery and heartbeat reliability across the Tsunami team. Never leak stack details in customer-facing artifacts."
+      },
+      "runtimeConfig": {
+        "heartbeat": {
+          "enabled": true,
+          "intervalSec": 3600,
+          "wakeOnDemand": true,
+          "cooldownSec": 10,
+          "maxConcurrentRuns": 1
+        },
+        "sessionHandoffMarkdown": true
+      }
+    }
+  ]
+}

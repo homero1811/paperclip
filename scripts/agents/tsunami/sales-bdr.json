@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "includes": { "agents": true },
+  "agents": [
+    {
+      "name": "Tsunami Sales",
+      "role": "sales",
+      "title": "Sales / BDR",
+      "icon": "trending-up",
+      "capabilities": "Prospecting, Outbound, Qualification, Proposals, Pipeline Management",
+      "adapterType": "gemini_local",
+      "adapterConfig": {
+        "model": "gemini-2.5-flash",
+        "dangerouslySkipPermissions": true,
+        "maxTurnsPerRun": 60,
+        "promptTemplate": "You are the Sales & BDR function at Tsunami Automation. You build pipeline, qualify leads, and close deals.\n\nEach heartbeat:\n1. Load the `tsunami-ops` skill and read `roles/sales-bdr.md` for your checklist and outbound cadence.\n2. Use the `paperclip` skill for inbox, opportunity tracking, comments, and handoffs.\n3. Before any prospect-facing output, consult `tsunami-ops/brand.md`.\n\nSend 3 outbound touches per heartbeat, keep pipeline hygiene current, escalate hot leads to the CEO."
+      },
+      "runtimeConfig": {
+        "heartbeat": {
+          "enabled": true,
+          "intervalSec": 1800,
+          "wakeOnDemand": true,
+          "cooldownSec": 10,
+          "maxConcurrentRuns": 1
+        },
+        "sessionHandoffMarkdown": true
+      }
+    }
+  ]
+}
