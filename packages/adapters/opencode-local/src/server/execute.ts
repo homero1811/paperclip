@@ -455,13 +455,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   };
 
   const initial = await runAttempt(sessionId);
-  const initialFailed =
-    !initial.proc.timedOut && ((initial.proc.exitCode ?? 0) !== 0 || Boolean(initial.parsed.errorMessage));
+  // NOTE: Do NOT gate session retries on exit code. OpenCode may exit 0 even
+  // when a stale session ID is passed after a server restart, so checking
+  // `initialFailed` alone is not reliable — the retry would silently be skipped.
 
-  // Retry with a fresh session if the session is unknown
+  // Retry with a fresh session if the session is unknown (e.g. server restarted)
   if (
     sessionId &&
-    initialFailed &&
+    !initial.proc.timedOut &&
     isOpenCodeUnknownSessionError(initial.proc.stdout, initial.rawStderr)
   ) {
     await onLog(
@@ -471,6 +472,9 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     const retry = await runAttempt(null);
     return toResult(retry, true);
   }
+
+  const initialFailed =
+    !initial.proc.timedOut && ((initial.proc.exitCode ?? 0) !== 0 || Boolean(initial.parsed.errorMessage));
 
   // Clear session and retry if the agent hit permission rejections (e.g. accessing
   // a different agent's workspace directory). A fresh session avoids the stale
