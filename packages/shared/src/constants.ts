@@ -1,3 +1,31 @@
+// ---------------------------------------------------------------------------
+// Agency Agents — division → project mapping and defaults
+// ---------------------------------------------------------------------------
+
+export const AGENCY_AGENT_DIVISIONS = [
+  "engineering",
+  "testing",
+  "project-management",
+  "product",
+  "support",
+  "marketing",
+] as const;
+export type AgencyAgentDivision = (typeof AGENCY_AGENT_DIVISIONS)[number];
+
+export const AGENCY_AGENT_DIVISION_PROJECT_NAMES: Record<AgencyAgentDivision, string> = {
+  engineering: "Engineering",
+  testing: "Quality & Testing",
+  "project-management": "Project Management",
+  product: "Product",
+  support: "Operations & Support",
+  marketing: "Marketing & Growth",
+};
+
+export const AGENCY_AGENT_DEFAULT_ADAPTER = "claude_local" as const;
+export const AGENCY_AGENT_DEFAULT_MODEL = "claude-opus-4-5" as const;
+
+// ---------------------------------------------------------------------------
+
 export const COMPANY_STATUSES = ["active", "paused", "archived"] as const;
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
 
